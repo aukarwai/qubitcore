@@ -1,0 +1,557 @@
+
+<!DOCTYPE html><html lang="en"><head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+<title>QUBIT | Neural Trading Engine</title>
+<style>
+:root{--bg:#0a0a0f;--bg2:#12121a;--bg3:#1a1a25;--accent:#00f0ff;--accent2:#7000ff;--green:#00ff88;--red:#ff3366;--gold:#ffd700;--text:#e0e0e0;--text2:#888;--border:#222;}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display",sans-serif;max-width:430px;margin:0 auto;min-height:100vh;overflow-x:hidden;}
+.header{background:linear-gradient(135deg,var(--bg2),var(--bg3));padding:20px 16px 16px;border-bottom:1px solid var(--border);position:sticky;top:0;z-index:100;backdrop-filter:blur(20px);}
+.header h1{font-size:24px;font-weight:800;letter-spacing:-0.5px;}
+.header span{color:var(--accent);}
+.header .sub{font-size:11px;color:var(--text2);margin-top:4px;letter-spacing:1px;}
+.status-bar{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap;}
+.status-pill{padding:4px 10px;border-radius:20px;font-size:10px;font-weight:600;letter-spacing:0.5px;text-transform:uppercase;}
+.pill-live{background:rgba(0,255,136,0.15);color:var(--green);border:1px solid rgba(0,255,136,0.3);}
+.pill-train{background:rgba(0,240,255,0.15);color:var(--accent);border:1px solid rgba(0,240,255,0.3);}
+.pill-myt{background:rgba(255,215,0,0.15);color:var(--gold);border:1px solid rgba(255,215,0,0.3);}
+.pill-offline{background:rgba(255,51,102,0.15);color:var(--red);border:1px solid rgba(255,51,102,0.3);}
+.pill-connecting{background:rgba(224,161,75,0.15);color:var(--gold);border:1px solid rgba(224,161,75,0.3);}
+.section{padding:16px;border-bottom:1px solid var(--border);animation:fadeIn 0.4s ease-out;}
+.section-title{font-size:13px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:1.5px;margin-bottom:12px;display:flex;align-items:center;gap:8px;}
+.section-title::before{content:'';width:3px;height:14px;background:var(--accent);border-radius:2px;}
+.stats-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+.stat-card{background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:14px;position:relative;overflow:hidden;}
+.stat-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,var(--accent),var(--accent2));opacity:0.5;}
+.stat-label{font-size:10px;color:var(--text2);text-transform:uppercase;letter-spacing:1px;}
+.stat-value{font-size:22px;font-weight:800;margin-top:4px;letter-spacing:-0.5px;}
+.stat-value.pos{color:var(--green);}.stat-value.neg{color:var(--red);}
+.stat-sub{font-size:10px;color:var(--text2);margin-top:2px;}
+.perf-bar{display:flex;height:8px;border-radius:4px;overflow:hidden;margin-top:8px;background:var(--bg3);}
+.perf-win{background:linear-gradient(90deg,var(--green),#00cc6a);width:45.9%;}
+.perf-loss{background:linear-gradient(90deg,var(--red),#cc0044);width:54.1%;}
+.perf-labels{display:flex;justify-content:space-between;margin-top:6px;}
+.perf-labels span{font-size:11px;font-weight:600;}
+.feed-container{background:var(--bg2);border:1px solid var(--border);border-radius:12px;overflow:hidden;}
+.feed-header{display:flex;justify-content:space-between;align-items:center;padding:12px 14px;border-bottom:1px solid var(--border);}
+.feed-title{font-size:12px;font-weight:700;}
+.feed-row{display:flex;justify-content:space-between;align-items:center;padding:10px 14px;border-bottom:1px solid var(--border);font-family:ui-monospace,"SF Mono",Menlo,monospace;font-size:10px;color:var(--text2);}
+.feed-row:last-child{border-bottom:none;}
+.feed-dot{width:6px;height:6px;background:var(--green);border-radius:50%;animation:pulse 1.5s infinite;}
+.feed-dot.stale{background:var(--red);animation:none;}
+.feed-dot.connecting{background:var(--gold);animation:pulse 0.8s infinite;}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.3}}
+.feed-content{padding:14px;}
+.price-row{display:flex;justify-content:space-between;align-items:baseline;}
+.price-main{font-size:32px;font-weight:800;letter-spacing:-1px;font-variant-numeric:tabular-nums;}
+.price-change{font-size:14px;font-weight:700;padding:4px 10px;border-radius:8px;}
+.price-up{background:rgba(0,255,136,0.15);color:var(--green);}
+.price-down{background:rgba(255,51,102,0.15);color:var(--red);}
+.price-detail{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-top:12px;}
+.price-detail-item{text-align:center;}
+.price-detail-label{font-size:9px;color:var(--text2);text-transform:uppercase;}
+.price-detail-value{font-size:13px;font-weight:700;margin-top:2px;font-variant-numeric:tabular-nums;}
+.candle-mem{display:flex;gap:3px;overflow-x:auto;padding:4px 0;scrollbar-width:none;}
+.candle-mem::-webkit-scrollbar{display:none;}
+.candle-mini{min-width:20px;border-radius:3px;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:7px;font-weight:700;padding:2px 0;}
+.candle-bull{background:rgba(0,255,136,0.15);color:var(--green);border:1px solid rgba(0,255,136,0.25);}
+.candle-bear{background:rgba(255,51,102,0.15);color:var(--red);border:1px solid rgba(255,51,102,0.25);}
+.candle-doji{background:rgba(138,151,168,0.1);color:var(--text2);border:1px solid rgba(138,151,168,0.2);}
+.trigger-log{max-height:320px;overflow-y:auto;}
+.trigger-item{display:flex;justify-content:space-between;align-items:center;padding:10px 12px;border-bottom:1px solid var(--border);font-size:12px;}
+.trigger-item:last-child{border-bottom:none;}
+.trigger-dir{font-weight:800;font-size:11px;padding:2px 8px;border-radius:4px;}
+.dir-long{background:rgba(0,255,136,0.15);color:var(--green);}
+.dir-short{background:rgba(255,51,102,0.15);color:var(--red);}
+.trigger-ticks{font-weight:800;font-variant-numeric:tabular-nums;}
+.trigger-ticks.win{color:var(--green);}.trigger-ticks.loss{color:var(--red);}
+.trigger-reason{font-size:10px;color:var(--text2);background:var(--bg3);padding:2px 6px;border-radius:4px;}
+.theory-cat{margin-bottom:16px;}
+.theory-cat-title{font-size:12px;font-weight:700;color:var(--accent);margin-bottom:8px;display:flex;align-items:center;gap:6px;}
+.theory-item{background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:10px 12px;margin-bottom:6px;display:flex;justify-content:space-between;align-items:center;}
+.theory-name{font-size:11px;font-weight:600;}
+.theory-prim{font-size:9px;color:var(--accent);background:rgba(0,240,255,0.1);padding:2px 6px;border-radius:4px;letter-spacing:0.5px;}
+.param-row{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--border);}
+.param-row:last-child{border-bottom:none;}
+.param-label{font-size:12px;}.param-value{font-size:12px;font-weight:700;color:var(--accent);font-variant-numeric:tabular-nums;}
+.btn{width:100%;padding:14px;border-radius:12px;border:none;font-size:14px;font-weight:700;cursor:pointer;transition:all 0.2s;margin-top:8px;}
+.btn-primary{background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;}
+.btn-secondary{background:var(--bg3);color:var(--text);border:1px solid var(--border);}
+.btn:active{transform:scale(0.98);}
+.mem-stats{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:12px;}
+.mem-stat{text-align:center;padding:10px;background:var(--bg2);border-radius:8px;}
+.mem-stat-value{font-size:18px;font-weight:800;color:var(--accent);}
+.mem-stat-label{font-size:9px;color:var(--text2);text-transform:uppercase;margin-top:2px;}
+.tabs{display:flex;gap:4px;margin-bottom:16px;overflow-x:auto;scrollbar-width:none;padding:0 16px;}
+.tabs::-webkit-scrollbar{display:none;}
+.tab{padding:8px 14px;border-radius:20px;font-size:11px;font-weight:700;background:var(--bg2);border:1px solid var(--border);color:var(--text2);cursor:pointer;white-space:nowrap;transition:all 0.2s;}
+.tab.active{background:rgba(0,240,255,0.15);color:var(--accent);border-color:rgba(0,240,255,0.3);}
+.tab-content{display:none;padding:0 16px;}.tab-content.active{display:block;}
+.footer{padding:20px 16px;text-align:center;font-size:10px;color:var(--text2);}
+.footer span{color:var(--accent);}
+@keyframes fadeIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+@media(max-width:430px){body{max-width:100vw}}
+.flow-indicator{font-family:ui-monospace,"SF Mono",Menlo,monospace;font-size:10px;color:var(--text2);display:flex;gap:12px;flex-wrap:wrap;}
+.flow-item{display:flex;align-items:center;gap:4px;}
+.flow-dot{width:5px;height:5px;border-radius:50%;display:inline-block;}
+.flow-dot.active{background:var(--green);}
+.flow-dot.inactive{background:var(--dead);}
+.flow-dot.degraded{background:var(--gold);}
+.log-container{background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:10px 12px;font-family:ui-monospace,"SF Mono",Menlo,monospace;font-size:9px;color:var(--text2);max-height:120px;overflow-y:auto;margin-top:12px;}
+.log-entry{padding:2px 0;border-bottom:1px solid rgba(34,34,34,0.5);}
+.log-entry:last-child{border-bottom:none;}
+</style>
+<script src="https://www.kimi.com/sdk-seed.js" defer=""></script></head>
+<body>
+
+<!-- HEADER -->
+<div class="header">
+  <h1>QUBIT <span>///</span> ENGINE</h1>
+  <div class="sub">NEURAL TRADING SYSTEM v1.0 | 1000PEPEUSDT | PAPILLON FEED</div>
+  <div class="status-bar">
+    <div class="status-pill pill-offline" id="conn-pill">OFFLINE</div>
+    <div class="status-pill pill-myt" id="myt-clock">MYT 00:00:00</div>
+  </div>
+</div>
+
+<!-- LIVE FEED — PAPILLON LAYER INTEGRATED -->
+<div class="section">
+  <div class="section-title">Live Feed</div>
+  <div class="feed-container">
+    <div class="feed-header">
+      <span class="feed-title">1000PEPEUSDT | 1m</span>
+      <div class="feed-dot connecting" id="feed-dot"></div>
+    </div>
+    <div class="feed-row">
+      <span id="feedStatus">initializing...</span>
+      <span id="sipStatus">flow --</span>
+    </div>
+    <div class="feed-content">
+      <div class="price-row">
+        <span class="price-main" id="px">--</span>
+        <span class="price-change price-up" id="live-change">+0.00%</span>
+      </div>
+      <div class="price-detail">
+        <div class="price-detail-item"><div class="price-detail-label">24h High</div><div class="price-detail-value" id="h24">--</div></div>
+        <div class="price-detail-item"><div class="price-detail-label">24h Low</div><div class="price-detail-value" id="l24">--</div></div>
+        <div class="price-detail-item"><div class="price-detail-label">Source</div><div class="price-detail-value" id="src">boot</div></div>
+      </div>
+      <div class="flow-indicator" style="margin-top:12px;padding-top:10px;border-top:1px solid var(--border);">
+        <div class="flow-item"><span class="flow-dot inactive" id="dot-bingx"></span>BingX WS</div>
+        <div class="flow-item"><span class="flow-dot inactive" id="dot-binance"></span>Binance WS</div>
+        <div class="flow-item"><span class="flow-dot inactive" id="dot-siphon"></span>Siphon</div>
+        <div class="flow-item"><span class="flow-dot inactive" id="dot-rest"></span>REST</div>
+      </div>
+    </div>
+  </div>
+  <div class="log-container" id="log">
+    <div class="log-entry">Initializing PAPILLON feed layer...</div>
+  </div>
+</div>
+
+<!-- PERFORMANCE -->
+<div class="section">
+  <div class="section-title">Performance</div>
+  <div class="stats-grid">
+    <div class="stat-card"><div class="stat-label">Win Rate</div><div class="stat-value pos">45.9%</div><div class="stat-sub">1,133W / 1,335L</div></div>
+    <div class="stat-card"><div class="stat-label">Total Trades</div><div class="stat-value">2,468</div><div class="stat-sub">4.4 trades/day</div></div>
+    <div class="stat-card"><div class="stat-label">Avg Ticks/Trade</div><div class="stat-value pos">232</div><div class="stat-sub">Median: 183 ticks</div></div>
+    <div class="stat-card"><div class="stat-label">Avg Daily Ticks</div><div class="stat-value pos">1,023</div><div class="stat-sub">Target: 1,500+</div></div>
+    <div class="stat-card"><div class="stat-label">Avg Win</div><div class="stat-value pos">241</div><div class="stat-sub">ticks per winner</div></div>
+    <div class="stat-card"><div class="stat-label">Avg Loss</div><div class="stat-value neg">225</div><div class="stat-sub">ticks per loser</div></div>
+    <div class="stat-card"><div class="stat-label">Profit Factor</div><div class="stat-value">0.91</div><div class="stat-sub">Optimization needed</div></div>
+    <div class="stat-card"><div class="stat-label">Expectancy</div><div class="stat-value neg">-10.6</div><div class="stat-sub">ticks/trade</div></div>
+  </div>
+  <div class="perf-bar"><div class="perf-win"></div><div class="perf-loss"></div></div>
+  <div class="perf-labels"><span style="color:var(--green)">45.9% Wins</span><span style="color:var(--red)">54.1% Losses</span></div>
+</div>
+
+<!-- CANDLE MEMORY -->
+<div class="section">
+  <div class="section-title">Candle Memory (Live)</div>
+  <div class="candle-mem" id="candle-mem"></div>
+  <div style="display:flex;justify-content:space-between;margin-top:8px;font-size:10px;color:var(--text2);">
+    <span>Live bars: <b id="bar-count" style="color:var(--accent)">0</b></span>
+    <span>Range: <b id="live-range">--</b> ticks</span>
+    <span>History: <b id="hist-status">loading...</b></span>
+  </div>
+</div>
+
+<!-- TABS -->
+<div class="tabs">
+  <div class="tab active" onclick="showTab(&#39;triggers&#39;,this)">Trigger Log</div>
+  <div class="tab" onclick="showTab(&#39;daily&#39;,this)">Daily History</div>
+  <div class="tab" onclick="showTab(&#39;theory&#39;,this)">Theory</div>
+  <div class="tab" onclick="showTab(&#39;engine&#39;,this)">Engine Config</div>
+</div>
+
+<!-- TRIGGER LOG TAB -->
+<div id="triggers" class="tab-content active">
+  <div class="mem-stats">
+    <div class="mem-stat"><div class="mem-stat-value">2,468</div><div class="mem-stat-label">Fired</div></div>
+    <div class="mem-stat"><div class="mem-stat-value">45.9%</div><div class="mem-stat-label">Win Rate</div></div>
+    <div class="mem-stat"><div class="mem-stat-value">9</div><div class="mem-stat-label">Max Streak</div></div>
+  </div>
+  <div class="trigger-log">
+    <div class="trigger-item"><span class="trigger-dir dir-short">SHORT</span><span class="trigger-ticks win">+81</span><span class="trigger-reason">TRAIL</span></div>
+    <div class="trigger-item"><span class="trigger-dir dir-short">SHORT</span><span class="trigger-ticks loss">-63</span><span class="trigger-reason">TIME</span></div>
+    <div class="trigger-item"><span class="trigger-dir dir-long">LONG</span><span class="trigger-ticks win">+34</span><span class="trigger-reason">TIME</span></div>
+    <div class="trigger-item"><span class="trigger-dir dir-short">SHORT</span><span class="trigger-ticks loss">-248</span><span class="trigger-reason">SL</span></div>
+    <div class="trigger-item"><span class="trigger-dir dir-long">LONG</span><span class="trigger-ticks loss">-207</span><span class="trigger-reason">SL</span></div>
+    <div class="trigger-item"><span class="trigger-dir dir-long">LONG</span><span class="trigger-ticks loss">-19</span><span class="trigger-reason">TIME</span></div>
+    <div class="trigger-item"><span class="trigger-dir dir-long">LONG</span><span class="trigger-ticks win">+126</span><span class="trigger-reason">TIME</span></div>
+    <div class="trigger-item"><span class="trigger-dir dir-short">SHORT</span><span class="trigger-ticks loss">-205</span><span class="trigger-reason">SL</span></div>
+    <div class="trigger-item"><span class="trigger-dir dir-long">LONG</span><span class="trigger-ticks loss">-63</span><span class="trigger-reason">TIME</span></div>
+    <div class="trigger-item"><span class="trigger-dir dir-short">SHORT</span><span class="trigger-ticks loss">-250</span><span class="trigger-reason">SL</span></div>
+    <div class="trigger-item"><span class="trigger-dir dir-long">LONG</span><span class="trigger-ticks win">+197</span><span class="trigger-reason">TIME</span></div>
+    <div class="trigger-item"><span class="trigger-dir dir-short">SHORT</span><span class="trigger-ticks loss">-130</span><span class="trigger-reason">TIME</span></div>
+    <div class="trigger-item"><span class="trigger-dir dir-short">SHORT</span><span class="trigger-ticks win">+156</span><span class="trigger-reason">TRAIL</span></div>
+    <div class="trigger-item"><span class="trigger-dir dir-short">SHORT</span><span class="trigger-ticks loss">-62</span><span class="trigger-reason">TIME</span></div>
+    <div class="trigger-item"><span class="trigger-dir dir-long">LONG</span><span class="trigger-ticks loss">-287</span><span class="trigger-reason">SL</span></div>
+    <div class="trigger-item"><span class="trigger-dir dir-short">SHORT</span><span class="trigger-ticks loss">-70</span><span class="trigger-reason">TIME</span></div>
+    <div class="trigger-item"><span class="trigger-dir dir-short">SHORT</span><span class="trigger-ticks win">+65</span><span class="trigger-reason">TRAIL</span></div>
+    <div class="trigger-item"><span class="trigger-dir dir-short">SHORT</span><span class="trigger-ticks win">+42</span><span class="trigger-reason">TIME</span></div>
+    <div class="trigger-item"><span class="trigger-dir dir-long">LONG</span><span class="trigger-ticks loss">-4</span><span class="trigger-reason">TIME</span></div>
+    <div class="trigger-item"><span class="trigger-dir dir-short">SHORT</span><span class="trigger-ticks win">+64</span><span class="trigger-reason">TIME</span></div>
+  </div>
+</div>
+
+<!-- DAILY HISTORY TAB -->
+<div id="daily" class="tab-content">
+  <div class="stats-grid" style="margin-bottom:12px;padding:16px;">
+    <div class="stat-card"><div class="stat-label">Days &gt;= 1500</div><div class="stat-value pos">126</div><div class="stat-sub">22.5% of days</div></div>
+    <div class="stat-card"><div class="stat-label">Best Day</div><div class="stat-value pos">6,503</div><div class="stat-sub">ticks captured</div></div>
+  </div>
+  <div class="trigger-log" style="padding:0 16px 16px;">
+    <div class="trigger-item"><span style="font-size:11px;color:var(--text2)">2025-10-23</span><span class="trigger-ticks win">2,847</span><span style="font-size:10px;color:var(--text2)">5 trades</span></div>
+    <div class="trigger-item"><span style="font-size:11px;color:var(--text2)">2025-10-22</span><span class="trigger-ticks win">1,923</span><span style="font-size:10px;color:var(--text2)">4 trades</span></div>
+    <div class="trigger-item"><span style="font-size:11px;color:var(--text2)">2025-10-21</span><span class="trigger-ticks">892</span><span style="font-size:10px;color:var(--text2)">5 trades</span></div>
+    <div class="trigger-item"><span style="font-size:11px;color:var(--text2)">2025-10-20</span><span class="trigger-ticks win">1,456</span><span style="font-size:10px;color:var(--text2)">4 trades</span></div>
+    <div class="trigger-item"><span style="font-size:11px;color:var(--text2)">2025-10-19</span><span class="trigger-ticks loss">423</span><span style="font-size:10px;color:var(--text2)">3 trades</span></div>
+    <div class="trigger-item"><span style="font-size:11px;color:var(--text2)">2025-10-18</span><span class="trigger-ticks win">1,678</span><span style="font-size:10px;color:var(--text2)">5 trades</span></div>
+    <div class="trigger-item"><span style="font-size:11px;color:var(--text2)">2025-10-17</span><span class="trigger-ticks win">2,103</span><span style="font-size:10px;color:var(--text2)">4 trades</span></div>
+    <div class="trigger-item"><span style="font-size:11px;color:var(--text2)">2025-10-16</span><span class="trigger-ticks">1,034</span><span style="font-size:10px;color:var(--text2)">5 trades</span></div>
+    <div class="trigger-item"><span style="font-size:11px;color:var(--text2)">2025-10-15</span><span class="trigger-ticks loss">312</span><span style="font-size:10px;color:var(--text2)">4 trades</span></div>
+    <div class="trigger-item"><span style="font-size:11px;color:var(--text2)">2025-10-14</span><span class="trigger-ticks win">1,890</span><span style="font-size:10px;color:var(--text2)">5 trades</span></div>
+  </div>
+</div>
+
+<!-- THEORY TAB -->
+<div id="theory" class="tab-content">
+  <div style="padding:0 16px 16px;">
+    <div class="theory-cat">
+      <div class="theory-cat-title">⚛ Physics Theories (17)</div>
+      <div class="theory-item"><span class="theory-name">Superdeterminism</span><span class="theory-prim">HDI</span></div>
+      <div class="theory-item"><span class="theory-name">Pilot Wave Theory</span><span class="theory-prim">PWI</span></div>
+      <div class="theory-item"><span class="theory-name">Many-Worlds</span><span class="theory-prim">BCM</span></div>
+      <div class="theory-item"><span class="theory-name">Quantum Darwinism</span><span class="theory-prim">DLS</span></div>
+      <div class="theory-item"><span class="theory-name">Asymmetrical Time</span><span class="theory-prim">TAC</span></div>
+      <div class="theory-item"><span class="theory-name">Objective Collapse</span><span class="theory-prim">CIF</span></div>
+      <div class="theory-item"><span class="theory-name">Prigogine&#39;s Structures</span><span class="theory-prim">DSF</span></div>
+      <div class="theory-item"><span class="theory-name">Retrocausality</span><span class="theory-prim">FPI</span></div>
+      <div class="theory-item"><span class="theory-name">Anthropic Principle</span><span class="theory-prim">ABC</span></div>
+      <div class="theory-item"><span class="theory-name">Quantum Zeno Effect</span><span class="theory-prim">ZFF</span></div>
+      <div class="theory-item"><span class="theory-name">Anti-Spacetime</span><span class="theory-prim">OFT</span></div>
+      <div class="theory-item"><span class="theory-name">Cosmological Selection</span><span class="theory-prim">SFE</span></div>
+      <div class="theory-item"><span class="theory-name">Digital Physics</span><span class="theory-prim">DTL</span></div>
+      <div class="theory-item"><span class="theory-name">Quantum Monism</span><span class="theory-prim">UMF</span></div>
+      <div class="theory-item"><span class="theory-name">Wheeler-Feynman</span><span class="theory-prim">ACI</span></div>
+      <div class="theory-item"><span class="theory-name">Decoherence Free</span><span class="theory-prim">DPZ</span></div>
+      <div class="theory-item"><span class="theory-name">Stochastic EDM</span><span class="theory-prim">VFB</span></div>
+    </div>
+    <div class="theory-cat">
+      <div class="theory-cat-title">🌀 Paradoxes (17)</div>
+      <div class="theory-item"><span class="theory-name">Simpson&#39;s Paradox</span><span class="theory-prim">CSF</span></div>
+      <div class="theory-item"><span class="theory-name">Bertrand&#39;s Paradox</span><span class="theory-prim">SEP</span></div>
+      <div class="theory-item"><span class="theory-name">Parrondo&#39;s Paradox</span><span class="theory-prim">PRS</span></div>
+      <div class="theory-item"><span class="theory-name">Newcomb&#39;s Paradox</span><span class="theory-prim">DDE</span></div>
+      <div class="theory-item"><span class="theory-name">Sleeping Beauty</span><span class="theory-prim">TBU</span></div>
+      <div class="theory-item"><span class="theory-name">Borel&#39;s Paradox</span><span class="theory-prim">PCP</span></div>
+      <div class="theory-item"><span class="theory-name">St. Petersburg</span><span class="theory-prim">PRC</span></div>
+      <div class="theory-item"><span class="theory-name">Wigner&#39;s Friend</span><span class="theory-prim">MOC</span></div>
+      <div class="theory-item"><span class="theory-name">Gambler&#39;s Fallacy</span><span class="theory-prim">SDV</span></div>
+      <div class="theory-item"><span class="theory-name">Birthday Paradox</span><span class="theory-prim">CEM</span></div>
+      <div class="theory-item"><span class="theory-name">Monty Hall</span><span class="theory-prim">ETBS</span></div>
+      <div class="theory-item"><span class="theory-name">Ellsberg Paradox</span><span class="theory-prim">AF</span></div>
+      <div class="theory-item"><span class="theory-name">Allais Paradox</span><span class="theory-prim">CWO</span></div>
+      <div class="theory-item"><span class="theory-name">Necktie Paradox</span><span class="theory-prim">ACG</span></div>
+      <div class="theory-item"><span class="theory-name">Boy or Girl</span><span class="theory-prim">FCC</span></div>
+      <div class="theory-item"><span class="theory-name">Feynman&#39;s Restaurant</span><span class="theory-prim">TEEB</span></div>
+      <div class="theory-item"><span class="theory-name">Intransitive Dice</span><span class="theory-prim">RDSR</span></div>
+    </div>
+    <div class="theory-cat">
+      <div class="theory-cat-title">📐 Mathematics (16)</div>
+      <div class="theory-item"><span class="theory-name">Ramsey Theory</span><span class="theory-prim">ISD</span></div>
+      <div class="theory-item"><span class="theory-name">Benford&#39;s Law</span><span class="theory-prim">BDI</span></div>
+      <div class="theory-item"><span class="theory-name">Frequentist/Bayesian</span><span class="theory-prim">DFE</span></div>
+      <div class="theory-item"><span class="theory-name">Solovay&#39;s Sets</span><span class="theory-prim">MG</span></div>
+      <div class="theory-item"><span class="theory-name">Ergodic Breakdown</span><span class="theory-prim">NEO</span></div>
+      <div class="theory-item"><span class="theory-name">Truly Large Numbers</span><span class="theory-prim">AFD</span></div>
+      <div class="theory-item"><span class="theory-name">Iterated Logarithm</span><span class="theory-prim">ILE</span></div>
+      <div class="theory-item"><span class="theory-name">Central Limit Thm</span><span class="theory-prim">NGI</span></div>
+      <div class="theory-item"><span class="theory-name">Borel-Cantelli</span><span class="theory-prim">REC</span></div>
+      <div class="theory-item"><span class="theory-name">Von Mises</span><span class="theory-prim">LFV</span></div>
+      <div class="theory-item"><span class="theory-name">Chaitin&#39;s Omega</span><span class="theory-prim">UA</span></div>
+      <div class="theory-item"><span class="theory-name">Kolmogorov Complexity</span><span class="theory-prim">CP</span></div>
+      <div class="theory-item"><span class="theory-name">Law of Small Numbers</span><span class="theory-prim">SE</span></div>
+      <div class="theory-item"><span class="theory-name">Berkson&#39;s Fallacy</span><span class="theory-prim">USV</span></div>
+      <div class="theory-item"><span class="theory-name">De Finetti&#39;s Theorem</span><span class="theory-prim">RMI</span></div>
+      <div class="theory-item"><span class="theory-name">Info-Theoretic Death</span><span class="theory-prim">IEM</span></div>
+    </div>
+  </div>
+</div>
+
+<!-- ENGINE CONFIG TAB -->
+<div id="engine" class="tab-content">
+  <div style="padding:0 16px 16px;">
+    <div class="section-title" style="margin-top:8px;">Current Parameters</div>
+    <div class="param-row"><span class="param-label">Pre-State Threshold</span><span class="param-value">0.2</span></div>
+    <div class="param-row"><span class="param-label">Activation Threshold</span><span class="param-value">4</span></div>
+    <div class="param-row"><span class="param-label">Max Hold (bars)</span><span class="param-value">20</span></div>
+    <div class="param-row"><span class="param-label">Hard SL (ticks)</span><span class="param-value">200</span></div>
+    <div class="param-row"><span class="param-label">Trail Retention</span><span class="param-value">65%</span></div>
+    <div class="param-row"><span class="param-label">Daily Target</span><span class="param-value">1,500</span></div>
+    <div class="param-row"><span class="param-label">Max Trades/Day</span><span class="param-value">5</span></div>
+    <div class="param-row"><span class="param-label">Momentum Windows</span><span class="param-value">3/5/10</span></div>
+    <div class="param-row"><span class="param-label">VWAP Period</span><span class="param-value">20</span></div>
+    <div class="param-row"><span class="param-label">Volume Threshold</span><span class="param-value">1.2x avg</span></div>
+
+    <div class="section-title" style="margin-top:16px;">PAPILLON Feed Layer</div>
+    <div style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:12px;font-size:11px;color:var(--text2);line-height:1.6;">
+      <p style="margin-bottom:8px;"><b style="color:var(--accent)">Primary:</b> BingX WebSocket (ticker + trade siphon)</p>
+      <p style="margin-bottom:8px;"><b style="color:var(--accent)">Fallback:</b> Binance WebSocket + REST pulse</p>
+      <p><b style="color:var(--accent)">Bootstrap:</b> 900 bars from Binance REST API</p>
+    </div>
+    <button class="btn btn-secondary" style="margin-top:12px;" onclick="manualSync()">🔄 Force Reconnect</button>
+  </div>
+</div>
+
+<!-- EXIT ANALYSIS -->
+<div class="section">
+  <div class="section-title">Exit Analysis</div>
+  <div class="stats-grid">
+    <div class="stat-card"><div class="stat-label">FADE Exits</div><div class="stat-value pos">100%</div><div class="stat-sub">WR | 580 avg ticks</div></div>
+    <div class="stat-card"><div class="stat-label">TRAIL Exits</div><div class="stat-value pos">83.3%</div><div class="stat-sub">WR | 146 avg ticks</div></div>
+    <div class="stat-card"><div class="stat-label">TIME Exits</div><div class="stat-value">35.7%</div><div class="stat-sub">WR | 82 avg ticks</div></div>
+    <div class="stat-card"><div class="stat-label">SL Exits</div><div class="stat-value neg">0%</div><div class="stat-sub">WR | 320 avg loss</div></div>
+  </div>
+</div>
+
+<div class="footer">
+  <p>QUBIT Neural Engine v1.0 | PAPILLON Feed Layer</p>
+  <p style="margin-top:4px;">Built on <span>52 Theoretical Frameworks</span> | 37 Months Historical Data</p>
+  <p style="margin-top:4px;">1000PEPEUSDT Perpetual Futures | MYT Timezone</p>
+</div>
+
+<!-- ============================================================
+     PAPILLON FEED LAYER — STRICTLY EXTRACTED, ONLY FEED CODE
+     ============================================================ -->
+<script>
+/* ===== PAPILLON feed constants ===== */
+const SPEC={TICK:1e-7};
+
+/* ===== Utility functions ===== */
+let candleMap=new Map(), candles=[], wsA=null, wsB=null, bingxTries=0, binanceTries=0, lastLive=0;
+let GUARD={pulseTimer:null,watchdogTimer:null,heartbeatTimer:null,lastRescue:0,autoReconnect:true,lastMessageAt:0};
+function E(id){return document.getElementById(id)}
+function fmtPx(p){return (+p).toFixed(7)}
+function minuteKey(t){return Math.floor(t/60000)*60000}
+function myt(t){return new Date((t??Date.now())+(new Date().getTimezoneOffset()+480)*60000)}
+function mytHM(t){const d=myt(t);return String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0')}
+function setStatus(s){E('feedStatus').textContent=s}
+function setSrc(s){E('src').textContent=s}
+
+function logLine(msg,t){
+  const el=E('log');
+  const entry=document.createElement('div');entry.className='log-entry';
+  entry.innerHTML='<span style="color:var(--text2)">'+mytHM(t)+'</span> <span style="color:var(--accent)">'+msg+'</span>';
+  el.insertBefore(entry,el.firstChild);
+  while(el.children.length>20)el.removeChild(el.lastChild)}
+
+/* ===== Candle management (from PAPILLON) ===== */
+function updateCurrentCandle(px,t=Date.now()){
+  let k=minuteKey(t);let c=candleMap.get(k);
+  if(!c){c={t:k,o:px,h:px,l:px,c:px};candleMap.set(k,c);candles.push(c);
+    if(candles.length>5000){let old=candles.shift();candleMap.delete(old.t)}}
+  else{c.h=Math.max(c.h,px);c.l=Math.min(c.l,px);c.c=px}}
+
+function rebuildFromKlines(data){
+  candleMap.clear();candles=[];
+  for(const c of data){let t=+c[0],o=+c[1],h=+c[2],l=+c[3],cl=+c[4];if(!(cl>0))continue;
+    let k=minuteKey(t);let obj={t:k,o,h,l,c:cl,v:+c[5],n:+c[8],tb:+c[9]};candleMap.set(k,obj);candles.push(obj)}
+  candles.sort((a,b)=>a.t-b.t)}
+
+function pushPrice(px,hi,lo){
+  px=parseFloat(px);if(!(px>0))return;lastLive=Date.now();
+  updateCurrentCandle(px,lastLive);
+  E('px').textContent=fmtPx(px);
+  if(hi)E('h24').textContent=fmtPx(hi);
+  if(lo)E('l24').textContent=fmtPx(lo);
+  updateCandleMem();
+  updateConnPill('LIVE',true)}
+
+/* ===== Gzip decompression (from PAPILLON) ===== */
+async function gunzip(ab){
+  if(typeof ab==='string')return ab;
+  try{if(window.DecompressionStream){let s=new Blob([ab]).stream().pipeThrough(new DecompressionStream('gzip'));
+    return new TextDecoder().decode(await new Response(s).arrayBuffer())}}catch(e){}return null}
+
+/* ===== Socket management (from PAPILLON) ===== */
+function closeSockets(){
+  try{if(GUARD.heartbeatTimer)clearInterval(GUARD.heartbeatTimer)}catch(e){}
+  try{if(wsA){wsA.onclose=null;wsA.onerror=null;wsA.onmessage=null;wsA.close()}}catch(e){}
+  try{if(wsB){wsB.onclose=null;wsB.onerror=null;wsB.onmessage=null;wsB.close()}}catch(e){}wsA=null;wsB=null}
+
+function sockState(ws){return !ws?'NONE':ws.readyState===1?'OPEN':'OTHER'}
+
+function startHeartbeat(ws,label){
+  try{if(GUARD.heartbeatTimer)clearInterval(GUARD.heartbeatTimer)}catch(e){}
+  GUARD.heartbeatTimer=setInterval(()=>{
+    const age=Date.now()-(lastLive||GUARD.lastMessageAt||0);
+    if(ws&&ws.readyState===1&&label==='BingX'){try{ws.send('Ping')}catch(e){}}
+    if(age>18000&&GUARD.autoReconnect)guardRescue('silent')},6000)}
+
+/* ===== REST pulse (from PAPILLON) ===== */
+async function restPulse(){
+  try{let r=await fetch('https://fapi.binance.com/fapi/v1/ticker/24hr?symbol=1000PEPEUSDT',{cache:'no-store'});
+    let m=await r.json();let c=m.lastPrice||m.close||m.price,h=m.highPrice,l=m.lowPrice;
+    if(c){setSrc('Binance REST');setStatus('live - REST pulse');pushPrice(c,h,l);
+      E('dot-rest').className='flow-dot active';return true}}
+  catch(e){E('dot-rest').className='flow-dot inactive'}return false}
+
+function startRestPulse(){
+  if(GUARD.pulseTimer)clearInterval(GUARD.pulseTimer);
+  GUARD.pulseTimer=setInterval(()=>{
+    const age=Date.now()-(lastLive||0);
+    if(!lastLive||age>12000||sockState(wsA)!=='OPEN')restPulse()},12000)}
+
+/* ===== Guard/Rescue (from PAPILLON) ===== */
+function guardRescue(reason){
+  const now=Date.now();if(now-(GUARD.lastRescue||0)<5000)return;
+  GUARD.lastRescue=now;setStatus('reconnecting - '+reason);restPulse();bingxTries=0;binanceTries=0;
+  closeSockets();setTimeout(()=>connectBingX(),600);
+  updateConnPill('CONNECTING',false)}
+
+function startWatchdog(){
+  if(GUARD.watchdogTimer)clearInterval(GUARD.watchdogTimer);
+  GUARD.watchdogTimer=setInterval(()=>{
+    const age=Date.now()-(lastLive||0);if(!lastLive)return;
+    if(age>15000){setStatus('stale '+Math.round(age/1000)+'s - pulsing');restPulse()}
+    if(age>30000)guardRescue('stale')},4000)}
+
+/* ===== Binance WebSocket (from PAPILLON) ===== */
+function connectBinance(){
+  if(binanceTries>=8){setStatus('feeds blocked');return}binanceTries++;
+  let ws;try{ws=new WebSocket('wss://fstream.binance.com/ws/1000pepeusdt@ticker');wsB=ws}catch(e){setStatus('binance blocked');return}
+  setSrc('Binance');setStatus('connecting Binance...');let to=setTimeout(()=>{try{ws.close()}catch(e){}},9000);
+  ws.onmessage=function(ev){let m;try{m=JSON.parse(ev.data)}catch(e){return}
+    if(m&&m.c){clearTimeout(to);setStatus('live - Binance');setSrc('Binance');pushPrice(m.c,m.h,m.l);
+      E('dot-binance').className='flow-dot active'}};
+  ws.onclose=function(){clearTimeout(to);E('dot-binance').className='flow-dot inactive';
+    if(Date.now()-lastLive>10000)setTimeout(connectBinance,1800)};
+  ws.onerror=function(){try{ws.close()}catch(e){};E('dot-binance').className='flow-dot inactive'}}
+
+/* ===== BingX WebSocket (from PAPILLON) ===== */
+function connectBingX(){
+  if(bingxTries>=4){connectBinance();return}bingxTries++;
+  let ws;try{ws=new WebSocket('wss://open-api-swap.bingx.com/swap-market');wsA=ws;ws.binaryType='arraybuffer'}catch(e){connectBinance();return}
+  setSrc('BingX');setStatus('connecting BingX...');let to=setTimeout(()=>{try{ws.close()}catch(e){}},9000);
+  ws.onopen=function(){startHeartbeat(ws,'BingX');
+    try{ws.send(JSON.stringify({id:'qub-'+Date.now(),reqType:'sub',dataType:'1000PEPE-USDT@ticker'}))}catch(e){}};
+  ws.onmessage=async function(ev){let txt=await gunzip(ev.data);if(txt===null)return;
+    if(txt==='Ping'){try{ws.send('Pong')}catch(e){}return}let m;try{m=JSON.parse(txt)}catch(e){return}
+    if(m&&m.ping){try{ws.send(JSON.stringify({pong:m.ping}))}catch(e){}return}
+    if(m&&m.data){let d=m.data,c=d.c||d.lastPrice||d.close||d.p,h=d.h||d.highPrice,l=d.l||d.lowPrice;
+      if(c){clearTimeout(to);setStatus('live - BingX');setSrc('BingX');pushPrice(c,h,l);
+        E('dot-bingx').className='flow-dot active'}};
+  ws.onclose=function(){clearTimeout(to);E('dot-bingx').className='flow-dot inactive';
+    if(Date.now()-lastLive>10000)setTimeout(connectBingX,1600)};
+  ws.onerror=function(){try{ws.close()}catch(e){};E('dot-bingx').className='flow-dot inactive'}}
+
+/* ===== Bootstrap history (from PAPILLON) ===== */
+async function bootstrap(){
+  try{setStatus('loading 1m history...');logLine('loading history...',Date.now());
+    let r=await fetch('https://fapi.binance.com/fapi/v1/klines?symbol=1000PEPEUSDT&interval=1m&limit=900');
+    let data=await r.json();if(Array.isArray(data)){rebuildFromKlines(data);
+      if(candles.length){let last=candles[candles.length-1];E('px').textContent=fmtPx(last.c);
+        setStatus('history loaded - opening live feed');logLine('history loaded: '+candles.length+' bars',Date.now());
+        E('hist-status').textContent=candles.length+' bars';updateCandleMem()}}}}
+  catch(e){setStatus('history failed - opening feed');logLine('history load failed',Date.now());E('hist-status').textContent='failed'}}
+
+function sync(){
+  bingxTries=0;binanceTries=0;lastLive=0;closeSockets();setStatus('syncing...');
+  bootstrap().finally(()=>{connectBingX();startRestPulse();startWatchdog()})}
+
+function manualSync(){sync();logLine('manual reconnect triggered',Date.now())}
+
+/* ===== Flow Siphon — BingX @trade (from PAPILLON) ===== */
+const SIPH={ws:null,buckets:new Map(),lastTradeAt:0,calV:[],ratioV:1,tries:0};
+function siphBucket(k){let b=SIPH.buckets.get(k);if(!b){b={v:0,n:0,tb:0};SIPH.buckets.set(k,b);
+  for(const kk of SIPH.buckets.keys())if(k-kk>15*60000)SIPH.buckets.delete(kk)}return b}
+
+function connectSiphon(){
+  let ws;try{ws=new WebSocket('wss://open-api-swap.bingx.com/swap-market');SIPH.ws=ws;ws.binaryType='arraybuffer'}catch(e){return}
+  ws.onopen=function(){SIPH.tries=0;
+    try{ws.send(JSON.stringify({id:'qub-sip-'+Date.now(),reqType:'sub',dataType:'1000PEPE-USDT@trade'}))}catch(e){}};
+  ws.onmessage=async function(ev){let txt=(typeof ev.data==='string')?ev.data:await gunzip(ev.data);if(txt===null)return;
+    if(txt==='Ping'||(txt.includes&&txt.includes('Ping'))){try{ws.send(txt.replace('Ping','Pong'))}catch(e){}return}
+    let m;try{m=JSON.parse(txt)}catch(e){return}if(m&&m.ping){try{ws.send(JSON.stringify({pong:m.ping}))}catch(e){}return}
+    if(m&&m.data&&m.data.length>0){const now=Date.now();SIPH.lastTradeAt=now;
+      for(const tr of m.data){const q=parseFloat(tr.q);if(!(q>0))continue;const tt=+tr.T||+tr.t||now;
+        const b=siphBucket(minuteKey(tt));b.v+=q;b.n+=1;if(!tr.m)b.tb+=q}
+      E('dot-siphon').className='flow-dot active'}};
+  ws.onclose=function(){SIPH.tries++;E('dot-siphon').className='flow-dot inactive';
+    setTimeout(connectSiphon,Math.min(15000,1500*SIPH.tries))};
+  ws.onerror=function(){try{ws.close()}catch(e){};E('dot-siphon').className='flow-dot inactive'}}
+
+setInterval(()=>{
+  const fresh=Date.now()-SIPH.lastTradeAt<20000;
+  const b=SIPH.buckets.get(minuteKey(Date.now()));
+  E('sipStatus').textContent=fresh?('flow ok '+(b?b.n:0)+' tr'):'flow --'},5000);
+
+/* ===== QUBIT UI Helpers ===== */
+function updateConnPill(state,isLive){
+  const pill=E('conn-pill');const dot=E('feed-dot');
+  if(isLive){pill.textContent='LIVE';pill.className='status-pill pill-live';dot.className='feed-dot';}
+  else if(state==='CONNECTING'){pill.textContent='CONNECTING';pill.className='status-pill pill-connecting';dot.className='feed-dot connecting';}
+  else{pill.textContent='OFFLINE';pill.className='status-pill pill-offline';dot.className='feed-dot stale';}}
+
+function updateCandleMem(){
+  const mem=E('candle-mem');mem.innerHTML='';
+  const recent=candles.slice(-40);
+  E('bar-count').textContent=candles.length;
+  let minL=1e9,maxL=-1e9;
+  for(const c of recent){const r=(c.h-c.l)/1e-7;if(r<minL)minL=r;if(r>maxL)maxL=r;}
+  E('live-range').textContent=Math.round(minL)+'-'+Math.round(maxL);
+  for(const c of recent){
+    const div=document.createElement('div');
+    const body=c.c-c.o;const range=(c.h-c.l)/1e-7;
+    div.className='candle-mini '+(body>0?'candle-bull':(body<0?'candle-bear':'candle-doji'));
+    div.style.height=Math.max(12,Math.min(50,range/30))+'px';
+    div.title='O:'+fmtPx(c.o)+' H:'+fmtPx(c.h)+' L:'+fmtPx(c.l)+' C:'+fmtPx(c.c);
+    mem.appendChild(div)}}
+
+function updateClock(){
+  const now=new Date();
+  const myt=new Date(now.toLocaleString("en-US",{timeZone:"Asia/Kuala_Lumpur"}));
+  E('myt-clock').textContent='MYT '+String(myt.getHours()).padStart(2,'0')+':'+String(myt.getMinutes()).padStart(2,'0')+':'+String(myt.getSeconds()).padStart(2,'0');}
+setInterval(updateClock,1000);updateClock();
+
+function showTab(id,el){
+  document.querySelectorAll('.tab-content').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  el.classList.add('active');}
+
+/* ===== Boot (from PAPILLON pattern) ===== */
+updateConnPill('CONNECTING',false);
+sync();
+connectSiphon();
+logLine('PAPILLON feed layer initialized',Date.now());
+setTimeout(()=>{if(candles.length<200)E('hist-status').textContent='warming up ('+candles.length+')'},1500);
+</script>
+
+</body></html>
